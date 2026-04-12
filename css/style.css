@@ -83,6 +83,13 @@ a {
     margin: 0;
 }
 
+.nav-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 .navbar-links a {
     position: relative;
     text-decoration: none;

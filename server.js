@@ -3,14 +3,17 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const neo4j = require('neo4j-driver');
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const NEO4J_URI = process.env.NEO4J_URI || 'bolt://localhost:7687';
 const NEO4J_USERNAME = process.env.NEO4J_USERNAME || 'neo4j';
-const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || 'password123';
+const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || '12345678';
 const NEO4J_DATABASE = process.env.NEO4J_DATABASE || 'neo4j';
+const DEFAULT_ADMIN_NAME = process.env.DEFAULT_ADMIN_NAME || 'admin';
+const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
 
 const SAMPLE_USERS = [
     { name: 'Ari', age: 24 },
@@ -169,6 +172,41 @@ function toNumber(value) {
     if (value === null || value === undefined) return null;
     if (typeof value?.toNumber === 'function') return value.toNumber();
     return Number(value);
+}
+
+function normalizeName(value) {
+    return String(value || '').trim();
+}
+
+function normalizeRole(value, fallback = null) {
+    const role = String(value || '').trim().toLowerCase();
+    if (!role) return fallback;
+    return role === 'admin' ? 'admin' : 'user';
+}
+
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+    return `${salt}:${derived}`;
+}
+
+function verifyPassword(password, storedHash) {
+    if (!storedHash || !storedHash.includes(':')) return false;
+    const [salt, original] = storedHash.split(':');
+    const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(original, 'hex'), Buffer.from(derived, 'hex'));
+}
+
+async function ensureDefaultAdmin() {
+    await runQuery(`
+        MERGE (u:User {name: $name})
+        ON CREATE SET u.created_at = toString(datetime())
+        SET u.role = 'admin',
+            u.password_hash = $password_hash
+    `, {
+        name: DEFAULT_ADMIN_NAME,
+        password_hash: hashPassword(DEFAULT_ADMIN_PASSWORD)
+    }, 'WRITE');
 }
 
 function encodeSvgDataUrl(svg) {
@@ -334,13 +372,16 @@ app.get('/api/users', async (req, res) => {
             OPTIONAL MATCH (u)-[w:WATCHED]->(:Movie)
             WITH u, count(w) AS watchedCount
             OPTIONAL MATCH (u)-[l:LIKED]->(:Movie)
-            RETURN u.name AS name, u.age AS age, watchedCount, count(l) AS likedCount
+            RETURN u.name AS name, u.age AS age,
+                   coalesce(u.role, 'user') AS role,
+                   watchedCount, count(l) AS likedCount
             ORDER BY name ASC
         `);
 
         res.json(result.records.map((record) => ({
             name: record.get('name'),
             age: toNumber(record.get('age')),
+            role: record.get('role'),
             watchedCount: toNumber(record.get('watchedCount')) || 0,
             likedCount: toNumber(record.get('likedCount')) || 0
         })));
@@ -363,8 +404,118 @@ app.get('/api/users/names', async (req, res) => {
     }
 });
 
+app.post('/api/auth/register', async (req, res) => {
+    const name = normalizeName(req.body?.name);
+    const password = String(req.body?.password || '');
+    const age = req.body?.age ?? null;
+
+    if (!name) {
+        return res.status(400).json({ error: 'User name is required' });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        const existing = await runQuery(`
+            MATCH (u:User {name: $name})
+            RETURN u.password_hash AS password_hash
+            LIMIT 1
+        `, { name });
+
+        if (existing.records.length) {
+            return res.status(409).json({ error: 'This username is already taken' });
+        }
+
+        const passwordHash = hashPassword(password);
+        await runQuery(`
+            CREATE (u:User {
+                name: $name,
+                age: $age,
+                role: 'user',
+                password_hash: $password_hash,
+                created_at: toString(datetime())
+            })
+        `, {
+            name,
+            age,
+            password_hash: passwordHash
+        }, 'WRITE');
+
+        res.status(201).json({
+            message: 'Account created',
+            user: { name, age, role: 'user' }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    const name = normalizeName(req.body?.name);
+    const password = String(req.body?.password || '');
+
+    if (!name || !password) {
+        return res.status(400).json({ error: 'Name and password are required' });
+    }
+
+    try {
+        if (name === DEFAULT_ADMIN_NAME && password === DEFAULT_ADMIN_PASSWORD) {
+            await ensureDefaultAdmin();
+            const adminProfile = await runQuery(`
+                MATCH (u:User {name: $name})
+                RETURN u.name AS name, u.age AS age, coalesce(u.role, 'admin') AS role
+                LIMIT 1
+            `, { name });
+
+            const record = adminProfile.records[0];
+            return res.json({
+                message: 'Login successful',
+                user: {
+                    name: record.get('name'),
+                    age: toNumber(record.get('age')),
+                    role: record.get('role')
+                }
+            });
+        }
+
+        const result = await runQuery(`
+            MATCH (u:User {name: $name})
+            RETURN u.name AS name, u.age AS age,
+                   coalesce(u.role, 'user') AS role,
+                   u.password_hash AS password_hash
+        `, { name });
+
+        if (!result.records.length) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        const matchedRecord = result.records.find((record) => verifyPassword(password, record.get('password_hash')));
+        if (!matchedRecord) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        res.json({
+            message: 'Login successful',
+            user: {
+                name: matchedRecord.get('name'),
+                age: toNumber(matchedRecord.get('age')),
+                role: matchedRecord.get('role')
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/users', async (req, res) => {
-    const { name, age } = req.body;
+    const name = normalizeName(req.body?.name);
+    const age = req.body?.age ?? null;
+    const role = normalizeRole(req.body?.role, 'user');
+    const password = String(req.body?.password || '');
+    const passwordHash = password ? hashPassword(password) : null;
+
     if (!name) {
         return res.status(400).json({ error: 'User name is required' });
     }
@@ -372,8 +523,13 @@ app.post('/api/users', async (req, res) => {
     try {
         await runQuery(`
             MERGE (u:User {name: $name})
-            SET u.age = $age
-        `, { name, age: age ?? null }, 'WRITE');
+            SET u.age = $age,
+                u.role = coalesce($role, u.role, 'user'),
+                u.password_hash = CASE
+                    WHEN $password_hash IS NULL THEN u.password_hash
+                    ELSE $password_hash
+                END
+        `, { name, age, role, password_hash: passwordHash }, 'WRITE');
 
         res.status(201).json({ message: 'User saved', name });
     } catch (error) {
@@ -383,7 +539,11 @@ app.post('/api/users', async (req, res) => {
 
 app.put('/api/users/:name', async (req, res) => {
     const originalName = req.params.name;
-    const { name, age } = req.body;
+    const name = normalizeName(req.body?.name);
+    const age = req.body?.age ?? null;
+    const role = normalizeRole(req.body?.role, null);
+    const password = String(req.body?.password || '');
+    const passwordHash = password ? hashPassword(password) : null;
 
     if (!name) {
         return res.status(400).json({ error: 'New user name is required' });
@@ -392,9 +552,15 @@ app.put('/api/users/:name', async (req, res) => {
     try {
         const result = await runQuery(`
             MATCH (u:User {name: $originalName})
-            SET u.name = $name, u.age = $age
+            SET u.name = $name,
+                u.age = $age,
+                u.role = coalesce($role, u.role, 'user'),
+                u.password_hash = CASE
+                    WHEN $password_hash IS NULL THEN u.password_hash
+                    ELSE $password_hash
+                END
             RETURN u
-        `, { originalName, name, age: age ?? null }, 'WRITE');
+        `, { originalName, name, age, role, password_hash: passwordHash }, 'WRITE');
 
         if (!result.records.length) {
             return res.status(404).json({ error: 'User not found' });
@@ -408,7 +574,11 @@ app.put('/api/users/:name', async (req, res) => {
 
 app.patch('/api/users/:name', async (req, res) => {
     const originalName = req.params.name;
-    const { name, age } = req.body;
+    const name = normalizeName(req.body?.name);
+    const age = req.body?.age ?? null;
+    const role = normalizeRole(req.body?.role, null);
+    const password = String(req.body?.password || '');
+    const passwordHash = password ? hashPassword(password) : null;
 
     if (!name) {
         return res.status(400).json({ error: 'New user name is required' });
@@ -417,9 +587,15 @@ app.patch('/api/users/:name', async (req, res) => {
     try {
         const result = await runQuery(`
             MATCH (u:User {name: $originalName})
-            SET u.name = $name, u.age = $age
+            SET u.name = $name,
+                u.age = $age,
+                u.role = coalesce($role, u.role, 'user'),
+                u.password_hash = CASE
+                    WHEN $password_hash IS NULL THEN u.password_hash
+                    ELSE $password_hash
+                END
             RETURN u
-        `, { originalName, name, age: age ?? null }, 'WRITE');
+        `, { originalName, name, age, role, password_hash: passwordHash }, 'WRITE');
 
         if (!result.records.length) {
             return res.status(404).json({ error: 'User not found' });
@@ -461,7 +637,7 @@ app.post('/api/users/sample', async (req, res) => {
         await runQuery(`
             UNWIND $users AS user
             MERGE (u:User {name: user.name})
-            SET u.age = user.age
+            SET u.age = user.age, u.role = coalesce(u.role, 'user')
         `, { users: SAMPLE_USERS }, 'WRITE');
         res.json({ message: 'Sample users added', count: SAMPLE_USERS.length });
     } catch (error) {
@@ -473,7 +649,7 @@ app.get('/api/users/:name/profile', async (req, res) => {
     try {
         const profileResult = await runQuery(`
             MATCH (u:User {name: $name})
-            RETURN u.name AS name, u.age AS age
+            RETURN u.name AS name, u.age AS age, coalesce(u.role, 'user') AS role
         `, { name: req.params.name });
 
         if (!profileResult.records.length) {
@@ -496,6 +672,7 @@ app.get('/api/users/:name/profile', async (req, res) => {
         res.json({
             name: record.get('name'),
             age: toNumber(record.get('age')),
+            role: record.get('role'),
             watched: watchedResult.records.map((row) => row.get('title')),
             liked: likedResult.records.map((row) => row.get('title'))
         });
@@ -824,6 +1001,32 @@ app.get('/api/recommend/:name/:method', async (req, res) => {
     const { name, method } = req.params;
 
     const queries = {
+        personalized: `
+            MATCH (u:User {name: $name})
+            OPTIONAL MATCH (u)-[:LIKED]->(liked:Movie)
+            WITH u, collect(DISTINCT liked) AS likedMovies
+            OPTIONAL MATCH (u)-[:WATCHED]->(watched:Movie)
+            WITH u, likedMovies, collect(DISTINCT watched) AS watchedMovies
+            WITH u, likedMovies, watchedMovies,
+                 [m IN likedMovies + watchedMovies WHERE m IS NOT NULL] AS seenMovies,
+                 [g IN [m IN likedMovies + watchedMovies | m.genre] WHERE g IS NOT NULL] AS preferredGenres
+            UNWIND preferredGenres AS genre
+            MATCH (rec:Movie {genre: genre})
+            WHERE NOT rec IN seenMovies
+            WITH DISTINCT rec, genre, size(likedMovies) AS likedCount
+            WITH rec, count(genre) AS genreScore, likedCount
+            OPTIONAL MATCH (:User)-[l:LIKED]->(rec)
+            WITH rec, genreScore, likedCount, count(l) AS likeScore
+            RETURN rec.title AS title,
+                   rec.genre AS genre,
+                   rec.year AS year,
+                   rec.image_url AS image_url,
+                   rec.description AS description,
+                   (genreScore * 2) + likeScore + CASE WHEN likedCount > 0 THEN 2 ELSE 0 END AS score,
+                   'Recommended from genres and activity the user selected on Home' AS reason
+            ORDER BY score DESC, title ASC
+            LIMIT 10
+        `,
         collaborative: `
             MATCH (u:User {name: $name})-[:LIKED]->(:Movie)<-[:LIKED]-(other:User)-[:LIKED]->(rec:Movie)
             WHERE other.name <> $name
@@ -902,8 +1105,10 @@ app.get('*', (req, res) => {
 app.listen(PORT, async () => {
     try {
         await driver.verifyConnectivity();
+        await ensureDefaultAdmin();
         console.log(`Movie Recommendation System running on http://localhost:${PORT}`);
         console.log(`Connected to Neo4j at ${NEO4J_URI}`);
+        console.log(`Default admin: ${DEFAULT_ADMIN_NAME}`);
     } catch (error) {
         console.error('Server started but Neo4j connection failed:', error.message);
         console.log(`Movie Recommendation System running on http://localhost:${PORT}`);

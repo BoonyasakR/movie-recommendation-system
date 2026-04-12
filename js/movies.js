@@ -89,6 +89,9 @@ async function refreshAll() {
         hydrateMovieCatalogPosters();
         renderRelationshipList();
         MovieRecUI.refreshConnectionStatus();
+        if (typeof window.loadAdminSummary === 'function') {
+            window.loadAdminSummary();
+        }
     } catch (error) {
         movieList.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>โหลด movies ไม่ได้</h3><p>${MovieRecUI.esc(error.message)}</p></div>`;
         relList.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>โหลด relationships ไม่ได้</h3><p>${MovieRecUI.esc(error.message)}</p></div>`;

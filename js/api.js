@@ -85,14 +85,29 @@ async function getUsers() {
     return apiFetch('/users');
 }
 
+async function registerUser(name, password, age = null) {
+    return apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name, password, age })
+    });
+}
+
+async function loginUser(name, password) {
+    return apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ name, password })
+    });
+}
+
 async function getUserNames() {
     return apiFetch('/users/names');
 }
 
-async function createUser(name, age) {
+async function createUser(name, age, options = {}) {
+    const { role = null, password = null } = options;
     return apiFetch('/users', {
         method: 'POST',
-        body: JSON.stringify({ name, age })
+        body: JSON.stringify({ name, age, role, password })
     });
 }
 

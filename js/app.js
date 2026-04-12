@@ -76,6 +76,52 @@ const MovieRecUI = (() => {
         };
     }
 
+    function saveCurrentUser(user) {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+    }
+
+    function getCurrentUser() {
+        const raw = localStorage.getItem('currentUser');
+        if (!raw) return null;
+
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.name) return parsed;
+        } catch {
+            if (raw.trim()) return { name: raw.trim() };
+        }
+
+        return null;
+    }
+
+    function isAdmin(user = getCurrentUser()) {
+        return user?.role === 'admin';
+    }
+
+    function requireAuth(redirectTo = 'login.html') {
+        const user = getCurrentUser();
+        if (!user) {
+            window.location.href = redirectTo;
+            return null;
+        }
+        return user;
+    }
+
+    function requireAdmin(redirectTo = 'index.html') {
+        const user = requireAuth();
+        if (!user) return null;
+        if (!isAdmin(user)) {
+            window.location.href = redirectTo;
+            return null;
+        }
+        return user;
+    }
+
+    function logout() {
+        localStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+    }
+
     function isGeneratedPoster(url) {
         return typeof url === 'string' && url.startsWith('data:image/svg+xml');
     }
@@ -158,6 +204,12 @@ const MovieRecUI = (() => {
         toast,
         toggleMenu,
         debounce,
+        saveCurrentUser,
+        getCurrentUser,
+        isAdmin,
+        requireAuth,
+        requireAdmin,
+        logout,
         isGeneratedPoster,
         resolvePosterUrl,
         setConnectionBadge,
@@ -168,3 +220,4 @@ const MovieRecUI = (() => {
 window.MovieRecUI = MovieRecUI;
 window.showToast = MovieRecUI.toast;
 window.toggleMenu = MovieRecUI.toggleMenu;
+window.logout = MovieRecUI.logout;

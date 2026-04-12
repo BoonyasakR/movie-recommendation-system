@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movies - MovieRec</title>
     <link rel="stylesheet" href="css/style.css">
+    <script>
+        (() => {
+            const raw = localStorage.getItem('currentUser');
+            if (!raw) {
+                window.location.href = 'login.html';
+                return;
+            }
+            try {
+                const user = JSON.parse(raw);
+                if (user?.role !== 'admin') window.location.href = 'index.html';
+            } catch {
+                window.location.href = 'index.html';
+            }
+        })();
+    </script>
 </head>
 
 <body>

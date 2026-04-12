@@ -14,35 +14,34 @@
             <a href="index.html" class="navbar-brand"><span>🎬</span> MovieRec</a>
             <button class="menu-toggle" onclick="toggleMenu()">☰</button>
             <ul class="navbar-links" id="navLinks">
-                <li><a href="index.html">🏠 Home</a></li>
-                <li><a href="users.html">👤 Users</a></li>
-                <li><a href="movies.html">🎬 Movies</a></li>
-                <li><a href="recommend.html" class="active">📊 Recommend</a></li>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="admin.html" data-admin-link>Admin</a></li>
+                <li><a href="recommend.html" class="active">Recommend</a></li>
             </ul>
         </div>
     </nav>
 
     <main class="container">
         <div class="page-header">
-            <h1>📊 Movie Recommendation</h1>
-            <p>เลือก user แล้วให้ระบบอธิบายทั้งผลลัพธ์และเหตุผลที่แนะนำ เพื่อใช้พรีเซนต์การทำงานของ Graph Database ได้ชัดขึ้น</p>
+            <h1>Movie Recommendation</h1>
+            <p>หน้านี้จะใช้ผลที่ผู้ใช้เลือกจากหน้า Home ทั้ง WATCHED และ LIKED มาคิด recommendation ให้ทันที โดยค่าเริ่มต้นจะใช้โหมด Personalized</p>
         </div>
 
         <div class="toolbar" style="margin-bottom:1rem;">
             <div class="connection-badge offline" id="recommendConnectionBadge" data-connection-badge>
                 <span class="dot"></span><span>Checking connection...</span>
             </div>
-            <button class="btn btn-outline btn-sm" id="refreshRecommendBtn">🔄 Reload users</button>
+            <button class="btn btn-outline btn-sm" id="refreshRecommendBtn">Reload</button>
         </div>
 
         <div class="split-panel">
             <div class="card">
                 <div class="card-header">
-                    <h2>🎯 เลือก User และวิธีแนะนำ</h2>
+                    <h2>Recommendation Settings</h2>
                 </div>
                 <div class="card-body">
                     <div style="display:flex; gap:1rem; align-items:end; flex-wrap:wrap;">
-                        <div class="form-group" style="flex:1; min-width:220px; margin-bottom:0;">
+                        <div class="form-group" style="flex:1; min-width:220px; margin-bottom:0;" id="recUserGroup">
                             <label for="recUser">เลือก User</label>
                             <select id="recUser" class="form-control">
                                 <option value="">-- เลือก User --</option>
@@ -51,31 +50,33 @@
                         <div class="form-group" style="flex:1; min-width:220px; margin-bottom:0;">
                             <label for="recMethod">วิธีแนะนำ</label>
                             <select id="recMethod" class="form-control">
-                                <option value="collaborative">👥 Collaborative Filtering</option>
-                                <option value="genre">🎭 Genre-Based</option>
-                                <option value="popular">🔥 Popular</option>
+                                <option value="personalized">Personalized</option>
+                                <option value="collaborative">Collaborative Filtering</option>
+                                <option value="genre">Genre-Based</option>
+                                <option value="popular">Popular</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary btn-lg" id="recBtn">📊 แนะนำเลย</button>
+                        <button class="btn btn-primary btn-lg" id="recBtn">แนะนำเลย</button>
                     </div>
 
                     <div class="method-info">
-                        <strong>Collaborative:</strong> หา user ที่ชอบหนังคล้ายกันแล้วดูว่าเขาชอบอะไรเพิ่ม<br>
+                        <strong>Personalized:</strong> ใช้ข้อมูลที่เลือกจากหน้า Home ทั้ง WATCHED และ LIKED มารวมกัน<br>
+                        <strong>Collaborative:</strong> หา user ที่ชอบหนังคล้ายกันแล้วดูว่าเขาชอบอะไรเพิ่มเติม<br>
                         <strong>Genre:</strong> ดูจาก genre ของหนังที่ user กดชอบไว้แล้วขยายไปเรื่องที่คล้ายกัน<br>
-                        <strong>Popular:</strong> ดูหนังที่ได้รับความนิยมโดยรวมและ user ยังไม่เคยดู
+                        <strong>Popular:</strong> ดูหนังที่ได้รับความนิยมรวม และ user ยังไม่เคยมี activity กับเรื่องนั้น
                     </div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-header">
-                    <h2>🧠 Recommendation lens</h2>
+                    <h2>Recommendation Lens</h2>
                 </div>
                 <div class="card-body" id="recommendSummary">
                     <div class="empty-state">
                         <div class="empty-state-icon">🕸️</div>
-                        <h3>รอเลือก User</h3>
-                        <p>เมื่อเลือก user แล้ว ส่วนนี้จะสรุปประวัติ ความชอบ และแนวทางที่ระบบจะใช้ในการแนะนำ</p>
+                        <h3>กำลังเตรียม recommendation</h3>
+                        <p>ระบบกำลังอ่าน profile ของผู้ใช้และวิธีแนะนำที่เลือกอยู่</p>
                     </div>
                 </div>
             </div>
@@ -83,14 +84,14 @@
 
         <div class="card" style="margin-top:1.5rem; display:none;" id="userProfileCard">
             <div class="card-header">
-                <h2>👤 โปรไฟล์ User</h2>
+                <h2>User Profile</h2>
             </div>
             <div class="card-body" id="userProfile"></div>
         </div>
 
         <div class="card" style="margin-top:1.5rem; display:none;" id="resultsCard">
             <div class="card-header">
-                <h2>🎬 ผลลัพธ์การแนะนำ</h2>
+                <h2>ผลลัพธ์การแนะนำ</h2>
                 <span class="badge badge-success" id="resultCount">0 เรื่อง</span>
             </div>
             <div class="card-body" id="recResults"></div>
