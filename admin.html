@@ -108,6 +108,26 @@
                     <h2>Edit User</h2>
                 </div>
                 <div class="card-body">
+                    <div class="edit-context-card">
+                        <div class="edit-context-head">
+                            <div>
+                                <div class="edit-context-label">Editing status</div>
+                                <strong id="editUserStatusTitle">No user selected</strong>
+                            </div>
+                            <span class="badge badge-warning" id="editUserStatusBadge">Waiting</span>
+                        </div>
+                        <p class="edit-context-text" id="editUserHelperText">Pick a user from the list, then update only the fields you want to change. Leaving password empty keeps the current password.</p>
+                        <div class="edit-summary-grid">
+                            <div class="edit-summary-card">
+                                <span class="edit-summary-label">Current data</span>
+                                <strong id="editUserOriginalSummary">No selected user yet</strong>
+                            </div>
+                            <div class="edit-summary-card">
+                                <span class="edit-summary-label">After save</span>
+                                <strong id="editUserNextSummary">The updated result will appear here</strong>
+                            </div>
+                        </div>
+                    </div>
                     <form id="editUserForm">
                         <div class="form-group">
                             <label for="editUserOriginalName">Selected user</label>
@@ -321,9 +341,14 @@
                 <div class="card-body">
                     <form id="editRelForm">
                         <div class="form-group">
+                            <label for="editRelSelector">Choose relationship</label>
+                            <select id="editRelSelector" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
                             <label for="editRelOriginal">Selected relationship</label>
                             <input type="text" id="editRelOriginal" class="form-control" readonly placeholder="Pick a relationship from the table below">
                         </div>
+                        <button type="button" class="field-helper-link" id="jumpToRelationshipListBtn">Nothing selected yet? Jump to the relationship list below and click Edit.</button>
                         <div class="form-group">
                             <label for="editRelUser">User</label>
                             <select id="editRelUser" class="form-control"></select>
@@ -370,7 +395,7 @@
             </div>
         </section>
 
-        <section class="card" style="margin-top:1.5rem;">
+        <section class="card" style="margin-top:1.5rem;" id="relationshipListSection">
             <div class="card-header">
                 <h2>All Relationships</h2>
                 <div class="toolbar" style="margin:0;">

@@ -13,7 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('deleteAllUsersBtn')?.addEventListener('click', handleDeleteAll);
     document.getElementById('searchClearBtn')?.addEventListener('click', clearSearch);
     document.getElementById('userSearchInput')?.addEventListener('input', MovieRecUI.debounce(handleSearch, 150));
+    document.getElementById('editUserName')?.addEventListener('input', renderEditUserContext);
+    document.getElementById('editUserAge')?.addEventListener('input', renderEditUserContext);
+    document.getElementById('editUserRole')?.addEventListener('change', renderEditUserContext);
+    document.getElementById('editUserPassword')?.addEventListener('input', renderEditUserContext);
 
+    renderEditUserContext();
     loadUserList();
 });
 
@@ -155,6 +160,7 @@ function beginEditUser(name) {
         window.loadAdminUserProfile(user.name);
     }
 
+    renderEditUserContext();
     document.getElementById('editUserName').focus();
 }
 
@@ -167,6 +173,8 @@ function clearEditUser() {
 
     const roleField = document.getElementById('editUserRole');
     if (roleField) roleField.value = 'user';
+
+    renderEditUserContext();
 }
 
 async function handleUpdateUser(event) {
@@ -268,6 +276,79 @@ function clearSearch() {
     const input = document.getElementById('userSearchInput');
     if (input) input.value = '';
     renderUsers();
+}
+
+function renderEditUserContext() {
+    const statusTitle = document.getElementById('editUserStatusTitle');
+    const statusBadge = document.getElementById('editUserStatusBadge');
+    const helperText = document.getElementById('editUserHelperText');
+    const originalSummary = document.getElementById('editUserOriginalSummary');
+    const nextSummary = document.getElementById('editUserNextSummary');
+
+    if (!statusTitle && !statusBadge && !helperText && !originalSummary && !nextSummary) return;
+
+    const isAdminPage = Boolean(document.getElementById('editUserRole'));
+    const editingUser = usersState.editingUser;
+
+    if (!editingUser) {
+        if (statusTitle) statusTitle.textContent = isAdminPage ? 'No user selected' : 'ยังไม่ได้เลือก User';
+        if (statusBadge) {
+            statusBadge.className = 'badge badge-warning';
+            statusBadge.textContent = isAdminPage ? 'Waiting' : 'รอเลือก';
+        }
+        if (helperText) {
+            helperText.textContent = isAdminPage
+                ? 'Pick a user from the list, then update only the fields you want to change. Leaving password empty keeps the current password.'
+                : 'เลือก User จากรายการด้านล่าง แล้วค่อยแก้เฉพาะช่องที่ต้องการ ข้อมูลเดิมจะยังไม่เปลี่ยนจนกว่าจะกดบันทึก';
+        }
+        if (originalSummary) originalSummary.textContent = isAdminPage ? 'No selected user yet' : 'ยังไม่มี User ที่เลือก';
+        if (nextSummary) nextSummary.textContent = isAdminPage ? 'The updated result will appear here' : 'จะแสดงผลลัพธ์ใหม่หลังเลือก User';
+        return;
+    }
+
+    const currentName = document.getElementById('editUserName')?.value.trim() || editingUser.name;
+    const ageValue = document.getElementById('editUserAge')?.value;
+    const currentAge = ageValue ? Number(ageValue) : null;
+    const currentRole = document.getElementById('editUserRole')?.value || editingUser.role || 'user';
+    const hasPasswordChange = Boolean(document.getElementById('editUserPassword')?.value.trim());
+    const originalRole = editingUser.role || 'user';
+    const originalAge = editingUser.age || null;
+    const changes = [];
+
+    if (currentName !== editingUser.name) changes.push(isAdminPage ? 'name' : 'ชื่อ');
+    if (currentAge !== originalAge) changes.push(isAdminPage ? 'age' : 'อายุ');
+    if (isAdminPage && currentRole !== originalRole) changes.push('role');
+    if (isAdminPage && hasPasswordChange) changes.push('password');
+
+    const originalParts = [editingUser.name];
+    const nextParts = [currentName];
+
+    if (originalAge) originalParts.push(isAdminPage ? `${originalAge} yrs` : `${originalAge} ปี`);
+    if (currentAge) nextParts.push(isAdminPage ? `${currentAge} yrs` : `${currentAge} ปี`);
+    if (isAdminPage) {
+        originalParts.push(originalRole);
+        nextParts.push(currentRole);
+        if (hasPasswordChange) nextParts.push('password reset');
+    }
+
+    if (statusTitle) statusTitle.textContent = isAdminPage ? `Editing ${editingUser.name}` : `กำลังแก้ไข ${editingUser.name}`;
+    if (statusBadge) {
+        statusBadge.className = `badge ${changes.length ? 'badge-success' : 'badge-primary'}`;
+        statusBadge.textContent = changes.length
+            ? (isAdminPage ? `${changes.length} change${changes.length > 1 ? 's' : ''}` : `เปลี่ยน ${changes.length} จุด`)
+            : (isAdminPage ? 'Ready' : 'พร้อมบันทึก');
+    }
+    if (helperText) {
+        helperText.textContent = changes.length
+            ? (isAdminPage
+                ? `You are changing ${changes.join(', ')}. Review the before/after summary below before saving.`
+                : `ตอนนี้กำลังแก้ ${changes.join(', ')} อยู่ ตรวจสรุปข้อมูลเดิมและข้อมูลใหม่ด้านล่างก่อนกดบันทึกได้เลย`)
+            : (isAdminPage
+                ? 'The form still matches the current user data. Update any field you want before saving.'
+                : 'ข้อมูลในฟอร์มยังตรงกับข้อมูลเดิมอยู่ ปรับเฉพาะช่องที่ต้องการแล้วค่อยบันทึก');
+    }
+    if (originalSummary) originalSummary.textContent = originalParts.join(' • ');
+    if (nextSummary) nextSummary.textContent = nextParts.join(' • ');
 }
 
 window.beginEditUser = beginEditUser;

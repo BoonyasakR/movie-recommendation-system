@@ -282,6 +282,32 @@ label {
     background: #2a2a2a;
 }
 
+input[readonly].form-control {
+    cursor: default;
+}
+
+.field-helper-link {
+    margin-top: 0.15rem;
+    margin-bottom: 0.95rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #ffb3b7;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+}
+
+.field-helper-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.jump-highlight {
+    animation: jump-highlight 1.6s ease;
+}
+
 .btn {
     appearance: none;
     border: 0;
@@ -679,6 +705,60 @@ th {
     margin-top: 1rem;
 }
 
+.edit-context-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background:
+        linear-gradient(180deg, rgba(35, 35, 35, 0.92), rgba(22, 22, 22, 0.92)),
+        radial-gradient(circle at top right, rgba(229, 9, 20, 0.14), transparent 32%);
+}
+
+.edit-context-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.edit-context-label,
+.edit-summary-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.edit-context-head strong,
+.edit-summary-card strong {
+    display: block;
+    margin-top: 0.2rem;
+    line-height: 1.45;
+}
+
+.edit-context-text {
+    margin: 0.8rem 0 0;
+    color: var(--text-muted);
+    line-height: 1.65;
+}
+
+.edit-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.95rem;
+}
+
+.edit-summary-card {
+    padding: 0.85rem 0.95rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .rec-results {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -769,6 +849,19 @@ th {
     }
 }
 
+@keyframes jump-highlight {
+    0%,
+    100% {
+        box-shadow: var(--shadow);
+        border-color: var(--border);
+    }
+
+    35% {
+        box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.22), var(--shadow);
+        border-color: rgba(229, 9, 20, 0.42);
+    }
+}
+
 @media (max-width: 900px) {
     .grid-2,
     .grid-3,
@@ -802,7 +895,14 @@ th {
     }
 
     .poster-select-grid,
-    .movie-catalog-grid {
+    .movie-catalog-grid,
+    .edit-summary-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .edit-summary-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -168,9 +168,14 @@
                 <div class="card-body">
                     <form id="editRelForm">
                         <div class="form-group">
+                            <label for="editRelSelector">à¹€à¸¥à¸·à¸­à¸ Relationship</label>
+                            <select id="editRelSelector" class="form-control"></select>
+                        </div>
+                        <div class="form-group">
                             <label for="editRelOriginal">Relationship ที่เลือก</label>
                             <input type="text" id="editRelOriginal" class="form-control" readonly placeholder="เลือกจากตารางด้านล่าง">
                         </div>
+                        <button type="button" class="field-helper-link" id="jumpToRelationshipListBtn">à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¹€à¸¥à¸·à¸­à¸? à¸¥à¸‡à¹„à¸›à¸—à¸µà¹ˆà¸£à¸²à¸¢à¸à¸²à¸£à¸”à¹‰à¸²à¸™à¸¥à¹ˆà¸²à¸‡à¹à¸¥à¹‰à¸§à¸à¸” Edit à¹„à¸”à¹‰à¹€à¸¥à¸¢</button>
                         <div class="form-group">
                             <label for="editRelUser">User</label>
                             <select id="editRelUser" class="form-control"></select>
@@ -219,7 +224,7 @@
             </div>
         </div>
 
-        <div class="card" style="margin-top:1.5rem;">
+        <div class="card" style="margin-top:1.5rem;" id="relationshipListSection">
             <div class="card-header">
                 <h2>🔗 ความสัมพันธ์ทั้งหมด</h2>
                 <div class="toolbar" style="margin:0;">

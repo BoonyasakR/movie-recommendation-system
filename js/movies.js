@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('movieGenreFilter').addEventListener('change', handleGenreFilter);
     document.getElementById('relMovieSearch').addEventListener('input', MovieRecUI.debounce(handleRelationshipMovieSearch, 120));
     document.getElementById('editRelMovieSearch').addEventListener('input', MovieRecUI.debounce(handleEditRelationshipMovieSearch, 120));
+    document.getElementById('editRelSelector').addEventListener('change', handleRelationshipSelectorChange);
+    document.getElementById('editRelOriginal').addEventListener('click', jumpToRelationshipList);
+    document.getElementById('jumpToRelationshipListBtn').addEventListener('click', jumpToRelationshipList);
 
     refreshAll();
 });
@@ -116,8 +119,18 @@ function renderDropdowns() {
         .concat(moviesState.users.map((user) => `<option value="${MovieRecUI.esc(user.name)}">${MovieRecUI.esc(user.name)}</option>`))
         .join('');
 
+    const relationshipOptions = [
+        '<option value="">-- Select relationship --</option>',
+        ...moviesState.relationships.map((rel) => `<option value="${getRelationshipOptionValue(rel)}">${MovieRecUI.esc(rel.user)} - [${MovieRecUI.esc(rel.type)}] - ${MovieRecUI.esc(rel.movie)}</option>`)
+    ].join('');
+
     document.getElementById('relUser').innerHTML = userOptions;
     document.getElementById('editRelUser').innerHTML = userOptions;
+    document.getElementById('editRelSelector').innerHTML = relationshipOptions;
+
+    if (moviesState.editingRelationship) {
+        document.getElementById('editRelSelector').value = getRelationshipOptionValue(moviesState.editingRelationship);
+    }
 }
 
 function renderMoviePicker(mode) {
@@ -404,6 +417,7 @@ async function handleAddRelationship(event) {
 function beginEditRelationship(user, movie, type) {
     moviesState.editingRelationship = { user, movie, type };
     moviesState.selectedEditRelationshipMovie = movie;
+    document.getElementById('editRelSelector').value = getRelationshipOptionValue(moviesState.editingRelationship);
     document.getElementById('editRelOriginal').value = `${user} -[${type}]-> ${movie}`;
     document.getElementById('editRelUser').value = user;
     document.getElementById('editRelType').value = type;
@@ -418,6 +432,7 @@ function clearEditRelationship() {
     moviesState.selectedEditRelationshipMovie = '';
     moviesState.editRelationshipMovieSearch = '';
     document.getElementById('editRelForm').reset();
+    document.getElementById('editRelSelector').value = '';
     document.getElementById('editRelOriginal').value = '';
     document.getElementById('editRelMovieSearch').value = '';
     syncMovieSelectionInput('edit');
@@ -544,6 +559,35 @@ function handleRelationshipMovieSearch(event) {
 function handleEditRelationshipMovieSearch(event) {
     moviesState.editRelationshipMovieSearch = event.target.value || '';
     renderMoviePicker('edit');
+}
+
+function getRelationshipOptionValue(rel) {
+    return encodeURIComponent(JSON.stringify([rel.user, rel.movie, rel.type]));
+}
+
+function handleRelationshipSelectorChange(event) {
+    const value = event.target.value;
+    if (!value) {
+        clearEditRelationship();
+        return;
+    }
+
+    try {
+        const [user, movie, type] = JSON.parse(decodeURIComponent(value));
+        beginEditRelationship(user, movie, type);
+    } catch {
+        showToast('Unable to load the selected relationship', 'error');
+    }
+}
+
+function jumpToRelationshipList() {
+    const section = document.getElementById('relationshipListSection');
+    if (!section) return;
+
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    section.classList.remove('jump-highlight');
+    void section.offsetWidth;
+    section.classList.add('jump-highlight');
 }
 
 window.beginEditMovie = beginEditMovie;
