@@ -1,47 +1,62 @@
 # Movie Recommendation System
 
-Movie recommendation demo app backed by Neo4j. The project includes a simple Express API and static frontend pages for user management, movies, relationships, and recommendations.
+ระบบแนะนำภาพยนตร์โดยใช้ Neo4j Graph Database สำหรับเก็บข้อมูลผู้ใช้ ภาพยนตร์ และความสัมพันธ์ เช่น `WATCHED` กับ `LIKED` จากนั้นนำข้อมูลใน graph ไปใช้คำนวณคำแนะนำภาพยนตร์ผ่านเว็บแอป
 
-## Features.
+## Features
 
-- Login and signup flow
-- Default admin account for quick access
-- Manage users, movies, and WATCHED / LIKED relationships
-- Recommendation page based on stored graph data
-- Sample-data endpoints for demo setup.
+- สมัครสมาชิกและเข้าสู่ระบบ
+- บัญชี admin เริ่มต้นสำหรับทดลองใช้งาน
+- จัดการข้อมูลผู้ใช้
+- จัดการข้อมูลภาพยนตร์
+- เพิ่ม แก้ไข และลบความสัมพันธ์ระหว่างผู้ใช้กับภาพยนตร์
+- แนะนำภาพยนตร์หลายรูปแบบ ได้แก่ Personalized, Collaborative, Genre-based และ Popular
+- มี endpoint สำหรับเพิ่มข้อมูลตัวอย่างเพื่อทดลองระบบ
+- รองรับการรันด้วย Docker Compose พร้อม Neo4j
 
 ## Tech Stack
 
 - Node.js
 - Express
 - Neo4j
-- Vanilla HTML, CSS, and JavaScript
+- neo4j-driver
+- HTML, CSS, JavaScript
+- Docker และ Docker Compose
 
 ## Project Structure
 
 ```text
 .
-|-- server.js
-|-- index.html
-|-- login.html
-|-- signup.html
-|-- users.html
-|-- movies.html
-|-- recommend.html
-|-- admin.html
-|-- css/
-|-- js/
+|-- server.js              # Express API และ logic เชื่อมต่อ Neo4j
+|-- index.html             # หน้า Home หลังเข้าสู่ระบบ
+|-- login.html             # หน้าเข้าสู่ระบบ
+|-- signup.html            # หน้าสมัครสมาชิก
+|-- users.html             # หน้าจัดการผู้ใช้
+|-- movies.html            # หน้าจัดการภาพยนตร์และ relationship
+|-- recommend.html         # หน้าแนะนำภาพยนตร์
+|-- admin.html             # หน้า admin dashboard
+|-- css/                   # stylesheet
+|-- js/                    # frontend JavaScript
+|-- Dockerfile             # image สำหรับ Node.js app
+|-- docker-compose.yml     # app + Neo4j
+|-- package.json
 `-- .env.example
 ```
 
 ## Prerequisites
 
-- Node.js 18+ recommended
-- A running Neo4j instance
+- Node.js 18 หรือใหม่กว่า
+- npm
+- Neo4j 5.x หรือ Docker Desktop
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and adjust values if needed.
+คัดลอกไฟล์ `.env.example` เป็น `.env`
+
+```bash
+copy .env.example .env
+```
+
+ตัวอย่างค่าใน `.env`
 
 ```env
 PORT=4000
@@ -49,154 +64,208 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=12345678
 NEO4J_DATABASE=neo4j
+```
+
+ตัวแปรเสริมที่ server รองรับ:
+
+```env
+DEFAULT_ADMIN_NAME=admin
 DEFAULT_ADMIN_PASSWORD=admin123
 ```
 
-Notes:
-
-- The server listens on `http://localhost:4000` by default.
-- Frontend API calls point to `http://localhost:4000/api`.
-- If `DEFAULT_ADMIN_PASSWORD` is not set, the app falls back to `admin123`.
+ถ้าไม่ได้กำหนดค่า admin ระบบจะใช้ `admin` / `admin123` เป็นค่าเริ่มต้น
 
 ## Installation
+
+ติดตั้ง dependencies
 
 ```bash
 npm install
 ```
 
-## Run
+## Run Locally
+
+ตรวจสอบว่า Neo4j เปิดอยู่และใช้ credential ตรงกับ `.env` จากนั้นรัน server
 
 ```bash
 npm start
 ```
 
-After the server starts, open:
+หรือ
 
-- `http://localhost:4000/login.html`
+```bash
+npm run dev
+```
 
-## Run With Docker
+เปิดเว็บแอปที่:
 
-This repo can run both the app and Neo4j with Docker Compose.
+```text
+http://localhost:4000/login.html
+```
 
-### 1. Build and start
+ตรวจสอบ API health check:
+
+```text
+http://localhost:4000/api/health
+```
+
+## Run With Docker Compose
+
+ใช้คำสั่งนี้เพื่อรันทั้ง Node.js app และ Neo4j
 
 ```bash
 docker compose up -d --build
 ```
 
-Open:
+หลังจาก container ทำงานแล้ว เปิดใช้งานได้ที่:
 
-- App: `http://localhost:4000/login.html`
-- Neo4j Browser: `http://localhost:7474`
+```text
+App:           http://localhost:4000/login.html
+Neo4j Browser: http://localhost:7474
+```
 
-### 2. Stop
+หยุด container:
 
 ```bash
 docker compose down
 ```
 
-### 3. Remove containers and database volume
+หยุดและลบ volume ฐานข้อมูล:
 
 ```bash
 docker compose down -v
 ```
 
-## Move The Project To Another Machine With Docker
-
-If you want the same project setup on another machine, use this flow.
-
-### Option A: move source code and rebuild locally
-
-1. Copy or clone the project repository
-2. Run:
-
-```bash
-docker compose up -d --build
-```
-
-This is enough for this project if you do not need to keep old container state.
-
-### Option B: push the app image to a registry and pull it on another machine
-
-Set your registry image name first:
-
-```bash
-set IMAGE_NAME=your-dockerhub-username/movie-recommendation-system-app
-```
-
-Build and push:
-
-```bash
-docker compose build app
-docker compose push app
-```
-
-On the other machine:
-
-```bash
-set IMAGE_NAME=your-dockerhub-username/movie-recommendation-system-app
-docker compose pull app
-docker compose up -d
-```
-
-Notes:
-
-- Neo4j data is stored in Docker volumes defined by Compose
-- Docker account login does not sync containers automatically between machines
-- The repeatable part is the code, Dockerfile, Compose file, and image tags
-
 ## Default Login
 
-- Username: `admin`
-- Password: `admin123`
+```text
+Username: admin
+Password: admin123
+```
 
-If you changed `DEFAULT_ADMIN_PASSWORD` in `.env`, use that password instead.
+หากแก้ `DEFAULT_ADMIN_NAME` หรือ `DEFAULT_ADMIN_PASSWORD` ใน `.env` ให้ใช้ค่าที่ตั้งไว้แทน
 
 ## Main Pages
 
-- `login.html`: sign in
-- `signup.html`: create a user account
-- `index.html`: main landing page after login
-- `users.html`: manage users
-- `movies.html`: manage movies and relationships
-- `recommend.html`: view recommendations
-- `admin.html`: combined admin view for all major entities
+- `login.html` - เข้าสู่ระบบ
+- `signup.html` - สมัครสมาชิก
+- `index.html` - หน้า Home สำหรับเลือกหนังที่ดูแล้วหรือชอบ
+- `users.html` - จัดการผู้ใช้
+- `movies.html` - จัดการภาพยนตร์และ relationship
+- `recommend.html` - ดูผลแนะนำภาพยนตร์
+- `admin.html` - dashboard สำหรับ admin
 
-## Useful API Endpoints
+## Recommendation Modes
 
-- `GET /api/health`
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/users`
-- `POST /api/users/sample`
-- `GET /api/movies`
-- `POST /api/movies/sample`
-- `GET /api/relationships`
-- `POST /api/relationships/sample`
+- `personalized` - แนะนำจากหนังที่ผู้ใช้เคย `WATCHED` หรือ `LIKED`
+- `collaborative` - แนะนำจากผู้ใช้คนอื่นที่มีพฤติกรรมคล้ายกัน
+- `genre` - แนะนำจาก genre ของหนังที่ผู้ใช้ชอบ
+- `popular` - แนะนำจากความนิยมรวมของระบบ
 
-## Demo Setup
+## API Endpoints
 
-If you want quick sample data for a demo, use the buttons in the UI or call the sample endpoints:
+### System
 
-- `POST /api/users/sample`
-- `POST /api/movies/sample`
-- `POST /api/relationships/sample`
+```text
+GET /api/health
+GET /api/stats
+```
+
+### Auth
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+```
+
+### Users
+
+```text
+GET    /api/users
+GET    /api/users/names
+POST   /api/users
+PUT    /api/users/:name
+DELETE /api/users/:name
+DELETE /api/users
+POST   /api/users/sample
+GET    /api/users/:name/profile
+```
+
+### Movies
+
+```text
+GET    /api/movies
+GET    /api/movies/titles
+POST   /api/movies
+PUT    /api/movies/:title
+DELETE /api/movies/:title
+DELETE /api/movies
+POST   /api/movies/sample
+```
+
+### Relationships
+
+```text
+GET    /api/relationships
+POST   /api/relationships
+PUT    /api/relationships
+DELETE /api/relationships
+POST   /api/relationships/sample
+```
+
+### Recommendations
+
+```text
+GET /api/recommend/:name/:method
+```
+
+ตัวอย่าง:
+
+```text
+GET /api/recommend/admin/personalized
+GET /api/recommend/admin/collaborative
+GET /api/recommend/admin/genre
+GET /api/recommend/admin/popular
+```
+
+## Demo Data
+
+สามารถเพิ่มข้อมูลตัวอย่างผ่านปุ่มในหน้าเว็บ หรือเรียก API เหล่านี้:
+
+```text
+POST /api/users/sample
+POST /api/movies/sample
+POST /api/relationships/sample
+```
 
 ## Troubleshooting
 
-### Login shows `Failed to fetch`
+### Login แล้วขึ้น `Failed to fetch`
 
-Usually means the frontend cannot reach the backend.
+ให้ตรวจสอบว่า:
 
-Check:
+- server ทำงานอยู่ที่ `http://localhost:4000`
+- Neo4j เปิดอยู่
+- ค่า `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` ใน `.env` ถูกต้อง
+- เปิด `http://localhost:4000/api/health` แล้วได้ response ปกติ
 
-1. `npm start` is running
-2. Neo4j is running on the configured `NEO4J_URI`
-3. `http://localhost:4000/api/health` responds successfully
+### Server เปิดได้ แต่เพิ่ม/อ่านข้อมูลไม่ได้
 
-### Server starts but data actions fail
+โดยทั่วไปเกิดจากการเชื่อมต่อ Neo4j ไม่สำเร็จ ให้ตรวจสอบ:
 
-Usually means Neo4j credentials or database settings in `.env` are incorrect.
+- Neo4j container หรือ Neo4j service ทำงานอยู่
+- password ตรงกับ `NEO4J_PASSWORD`
+- database name ตรงกับ `NEO4J_DATABASE`
+
+### ใช้ Docker แล้ว app ต่อ Neo4j ไม่ได้
+
+ใน Docker Compose ตัว app ใช้ค่า:
+
+```env
+NEO4J_URI=bolt://neo4j:7687
+```
+
+ไม่ใช่ `bolt://localhost:7687` เพราะ app container ต้องเรียก Neo4j ผ่านชื่อ service ใน Compose network
 
 ## License
 
