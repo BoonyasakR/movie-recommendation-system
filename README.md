@@ -1,5 +1,7 @@
 # Movie Recommendation System
 
+คู่มือใช้งานเพิ่มเติม: [USER_GUIDE.md](USER_GUIDE.md)
+
 ระบบแนะนำภาพยนตร์โดยใช้ Neo4j Graph Database สำหรับเก็บข้อมูลผู้ใช้ ภาพยนตร์ และความสัมพันธ์ เช่น `WATCHED` กับ `LIKED` จากนั้นนำข้อมูลใน graph ไปใช้คำนวณคำแนะนำภาพยนตร์ผ่านเว็บแอป
 
 ## Features

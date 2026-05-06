@@ -97,7 +97,10 @@
                 const active = button.getAttribute('data-mode-btn') === homeSelectionState.currentMode;
                 button.classList.toggle('active', active);
             });
-            document.getElementById('confirmTypeLabel').textContent = homeSelectionState.currentMode === 'LIKED' ? 'ถูกใจ' : 'ดูแล้ว';
+            const confirmTypeLabel = document.getElementById('confirmTypeLabel');
+            if (confirmTypeLabel) {
+                confirmTypeLabel.textContent = homeSelectionState.currentMode === 'LIKED' ? 'ถูกใจ' : 'ดูแล้ว';
+            }
         }
 
         function switchSelectionMode(mode) {
@@ -177,8 +180,10 @@
 
         function updateConfirmButton() {
             const count = homeSelectionState.selectedMovies.size;
-            document.getElementById('selectCount').textContent = count;
-            document.getElementById('confirmBtn').classList.toggle('show', count > 0);
+            const selectCount = document.getElementById('selectCount');
+            const confirmBtn = document.getElementById('confirmBtn');
+            if (selectCount) selectCount.textContent = count;
+            if (confirmBtn) confirmBtn.classList.toggle('show', count > 0);
         }
 
         async function confirmSelection() {
@@ -190,7 +195,7 @@
                 : new Set((homeSelectionState.profile?.watched || []).filter(Boolean));
 
             btn.disabled = true;
-            btn.textContent = 'กำลังบันทึก...';
+            btn.setAttribute('aria-busy', 'true');
 
             try {
                 for (const title of selected) {
@@ -208,6 +213,7 @@
                 window.location.href = 'recommend.html';
             } catch (error) {
                 btn.disabled = false;
+                btn.removeAttribute('aria-busy');
                 btn.innerHTML = `ยืนยันรายการ <span id="confirmTypeLabel">${relationType === 'LIKED' ? 'ถูกใจ' : 'ดูแล้ว'}</span> (<span id="selectCount">${selected.length}</span>) →`;
                 showToast(error.message, 'error');
                 updateConfirmButton();
